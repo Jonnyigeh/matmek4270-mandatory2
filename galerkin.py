@@ -9,10 +9,16 @@ x = sp.Symbol('x')
 
 
 def map_reference_domain(x, d, r):
+    """
+    Maps from a domain d, into a new reference domain r
+    """
     return r[0] + (r[1]-r[0])*(x-d[0])/(d[1]-d[0])
 
 
 def map_true_domain(x, d, r):
+    """
+    Maps from a reference domain r, into a new domain d.
+    """
     return d[0] + (d[1]-d[0])*(x-r[0])/(r[1]-r[0])
 
 
@@ -35,7 +41,8 @@ class FunctionSpace:
 
     @property
     def reference_domain(self):
-        raise RuntimeError
+        # raise RuntimeError
+        return (-1, 1)
 
     @property
     def domain_factor(self):
@@ -76,7 +83,13 @@ class FunctionSpace:
         return P
 
     def eval_derivative_basis_function_all(self, Xj, k=1):
-        raise NotImplementedError
+        # raise NotImplementedError 
+        derivs = np.zeros(N+1)
+        for j in range(self.N+1):
+            derivs[j] = self.derivative_basis_function(j, k=k)(Xj)
+
+        return derivs
+
 
     def inner_product(self, u):
         us = map_expression_true_domain(
@@ -109,10 +122,30 @@ class Legendre(FunctionSpace):
         return self.basis_function(j).deriv(k)
 
     def L2_norm_sq(self, N):
-        raise NotImplementedError
+        """
+        Calculates the L2 norm by the square-root of the L2 inner product of the error with itself.
+        """
+        # raise NotImplementedError
+        # n_basis_functions = N
+        # L2norm = np.zeros(n_basis_functions)
+        # for i in range(n_basis_functions):
+        #     phi_i = self.basis_function(i)
+        #     L2norm[i] = self.inner_product(phi_i)
+        L2norm = []
+        for i in range(N):
+            L2norm.append( (2 / (2 * i + 1)) )  
+        return L2norm
 
     def mass_matrix(self):
-        raise NotImplementedError
+        # raise NotImplementedError
+        # A = np.zeros((self.N, self.N))
+        # for i in range(self.N):
+        #     phi_i = self.basis_function(i)
+        #     A[i,i] = self.inner_product(phi_i)          # We are using an orthogonal basis -> only need to compute
+                                                         # terms of the form \delta_{ii}
+        A = sparse.diags(self.L2_norm_sq(self.N+1))
+
+        return A
 
     def eval(self, uh, xj):
         xj = np.atleast_1d(xj)
@@ -137,10 +170,27 @@ class Chebyshev(FunctionSpace):
         return 1/sp.sqrt(1-x**2)
 
     def L2_norm_sq(self, N):
-        raise NotImplementedError
+        # raise NotImplementedError
+        # n_basis_functions = N
+        # L2norm = np.zeros(n_basis_functions)
+        # for i in range(n_basis_functions):
+        #     phi_i = self.basis_function(i)
+        #     L2norm[i] = self.inner_product(phi_i)
+
+        L2norm = [np.pi / 2 for i in range(N)]
+        L2norm[0] = np.pi
+
+        return L2norm
 
     def mass_matrix(self):
-        raise NotImplementedError
+        # raise NotImplementedError
+        # A = np.zeros((self.N, self.N))
+        # for i in range(self.N):
+        #     phi_i = self.basis_function(i)
+        #     A[i,i] = self.inner_product(phi_i)
+
+        A = sparse.diags(self.L2_norm_sq(self.N+1))
+        return A
 
     def eval(self, uh, xj):
         xj = np.atleast_1d(xj)
@@ -192,6 +242,10 @@ class Sines(Trigonometric):
         return lambda Xj: np.sin((j+1)*np.pi*Xj)
 
     def derivative_basis_function(self, j, k=1):
+        """
+        Calculates the k'th derivative of the Sine function.
+        Scale gives prefactor, and also the proper sign (see dictionary)
+        """
         scale = ((j+1)*np.pi)**k * {0: 1, 1: -1}[(k//2) % 2]
         if k % 2 == 0:
             return lambda Xj: scale*np.sin((j+1)*np.pi*Xj)
@@ -199,22 +253,43 @@ class Sines(Trigonometric):
             return lambda Xj: scale*np.cos((j+1)*np.pi*Xj)
 
     def L2_norm_sq(self, N):
-        return 0.5
+        return 0.5         
 
 
 class Cosines(Trigonometric):
 
     def __init__(self, N, domain=(0, 1), bc=(0, 0)):
-        raise NotImplementedError
+        # raise NotImplementedError
+        Trigonometric.__init__(self, N, domain=domain)
+        self.B = Dirichlet(bc, domain, self.reference_domain)
 
     def basis_function(self, j, sympy=False):
-        raise NotImplementedError
+        # raise NotImplementedError
+        if sympy:
+            return sp.cos(j * sp.pi * x)
+        return lambda Xj: np.cos((j) * np.pi * Xj)
 
     def derivative_basis_function(self, j, k=1):
-        raise NotImplementedError
+        """
+        Calculates the k'th derivative of the Cosine function.
+        Scale gives prefactor, and also the proper sign (see dictionary)
+        """
+        # raise NotImplementedError
+        scale = ((j)*np.pi)**k * {0: 1, 1: -1}[( (k+1)//2) % 2]
+        if k % 2 == 0:  
+            return lambda Xj: scale*np.cos((j)*np.pi*Xj)
+        else:
+            return lambda Xj: scale*np.sin((j)*np.pi*Xj)
 
     def L2_norm_sq(self, N):
-        raise NotImplementedError
+        """
+        Euclidian norm of trigonometric functions corresponds to taking
+        the average 
+        """
+        # raise NotImplementedError 
+        if N == 0:
+            return 1            # Only constant term included in integral
+        return 0.5       
 
 # Create classes to hold the boundary function
 
@@ -289,15 +364,26 @@ class DirichletLegendre(Composite, Legendre):
         self.S = sparse.diags((1, -1), (0, 2), shape=(N+1, N+3), format='csr')
 
     def basis_function(self, j, sympy=False):
-        raise NotImplementedError
+        # raise NotImplementedError 
+        if sympy:
+            return sp.legendre(j) - sp.legendre(j+2)
+        return Leg.basis(j) - Leg.basis(j+2)
 
 
 class NeumannLegendre(Composite, Legendre):
     def __init__(self, N, domain=(-1, 1), bc=(0, 0), constraint=0):
-        raise NotImplementedError
-
+        # raise NotImplementedError 
+        Legendre.__init__(self, N, domain=domain)
+        self.B = Neumann(bc, domain, self.reference_domain)
+        scale = lambda j: j * (j + 1) / ( (j + 2) * (j + 3))
+        self.S = sparse.diags((1, [-scale(j) for j in range(N+1)]), (0,2), shape=(N+1, N+3), format="csr")
+        # Why this shape?
+        
     def basis_function(self, j, sympy=False):
-        raise NotImplementedError
+        # raise NotImplementedError
+        if sympy:
+            return sp.cos(sp.pi * j * (x + 1) / 2)
+        return Leg.basis(j) - j * (j+1) / ( (j +2) * (j + 3)) * Leg.basis(j+2) 
 
 
 class DirichletChebyshev(Composite, Chebyshev):
@@ -315,10 +401,17 @@ class DirichletChebyshev(Composite, Chebyshev):
 
 class NeumannChebyshev(Composite, Chebyshev):
     def __init__(self, N, domain=(-1, 1), bc=(0, 0), constraint=0):
-        raise NotImplementedError
+        # raise NotImplementedError
+        Chebyshev.__init__(self, N, domain=domain)
+        self.B = Neumann(bc, domain, self.reference_domain)
+        scale = lambda j: j ** 2 / (j + 2) ** 2
+        self.S = sparse.diags((1, [-scale(j) for j in range(N+1)]), (0,2), shape=(N+1, N+3), format="csr") 
 
     def basis_function(self, j, sympy=False):
-        raise NotImplementedError
+        # raise NotImplementedError 
+        if sympy:
+            return sp.cos(j*sp.acos(x)) - j ** 2 / (j + 2) ** 2 * sp.cos((j+2)*sp.acos(x))   
+        return Cheb.basis(j) - j ** 2 / (j + 2) ** 2 * Cheb.basis(j+2)
 
 
 class BasisFunction:
@@ -405,7 +498,7 @@ def L2_error(uh, ue, V, kind='norm'):
     if kind == 'norm':
         return np.sqrt(quad(uv, float(d[0]), float(d[1]))[0])
     elif kind == 'inf':
-        return max(abs(uj-uej))
+        return max(abs(uh-uej))
 
 
 def test_project():
@@ -424,7 +517,7 @@ def test_helmholtz():
     ue = sp.besselj(0, x)
     f = ue.diff(x, 2)+ue
     domain = (0, 10)
-    for space in (NeumannChebyshev, NeumannLegendre, DirichletChebyshev, DirichletLegendre, Sines, Cosines):
+    for space in (Sines, Cosines): #(NeumannChebyshev, NeumannLegendre, DirichletChebyshev, DirichletLegendre, Sines, Cosines):
         if space in (NeumannChebyshev, NeumannLegendre, Cosines):
             bc = ue.diff(x, 1).subs(x, domain[0]), ue.diff(
                 x, 1).subs(x, domain[1])
@@ -463,6 +556,6 @@ def test_convection_diffusion():
 
 
 if __name__ == '__main__':
-    test_project()
-    test_convection_diffusion()
+    # test_project()
+    # test_convection_diffusion()
     test_helmholtz()
