@@ -132,7 +132,7 @@ class Legendre(FunctionSpace):
         return L2norm
 
     def mass_matrix(self):
-        A = sparse.diags(self.L2_norm_sq(self.N+1)) # Orthogonal basis -> only diagonal elements non-zero
+        A = sparse.diags(self.L2_norm_sq(self.N+1), format="csr") # Orthogonal basis -> only diagonal elements non-zero
 
         return A
 
@@ -168,7 +168,7 @@ class Chebyshev(FunctionSpace):
     def mass_matrix(self):
         # raise NotImplementedError
 
-        A = sparse.diags(self.L2_norm_sq(self.N+1))
+        A = sparse.diags(self.L2_norm_sq(self.N+1), format="csr")
         return A
 
     def eval(self, uh, xj):
