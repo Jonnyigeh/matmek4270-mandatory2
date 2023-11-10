@@ -126,24 +126,13 @@ class Legendre(FunctionSpace):
         Calculates the L2 norm by the square-root of the L2 inner product of the error with itself.
         """
         # raise NotImplementedError
-        # n_basis_functions = N
-        # L2norm = np.zeros(n_basis_functions)
-        # for i in range(n_basis_functions):
-        #     phi_i = self.basis_function(i)
-        #     L2norm[i] = self.inner_product(phi_i)
         L2norm = []
         for i in range(N):
             L2norm.append( (2 / (2 * i + 1)) )  
         return L2norm
 
     def mass_matrix(self):
-        # raise NotImplementedError
-        # A = np.zeros((self.N, self.N))
-        # for i in range(self.N):
-        #     phi_i = self.basis_function(i)
-        #     A[i,i] = self.inner_product(phi_i)          # We are using an orthogonal basis -> only need to compute
-                                                         # terms of the form \delta_{ii}
-        A = sparse.diags(self.L2_norm_sq(self.N+1))
+        A = sparse.diags(self.L2_norm_sq(self.N+1)) # Orthogonal basis -> only diagonal elements non-zero
 
         return A
 
@@ -171,12 +160,6 @@ class Chebyshev(FunctionSpace):
 
     def L2_norm_sq(self, N):
         # raise NotImplementedError
-        # n_basis_functions = N
-        # L2norm = np.zeros(n_basis_functions)
-        # for i in range(n_basis_functions):
-        #     phi_i = self.basis_function(i)
-        #     L2norm[i] = self.inner_product(phi_i)
-
         L2norm = [np.pi / 2 for i in range(N)]
         L2norm[0] = np.pi
 
@@ -184,10 +167,6 @@ class Chebyshev(FunctionSpace):
 
     def mass_matrix(self):
         # raise NotImplementedError
-        # A = np.zeros((self.N, self.N))
-        # for i in range(self.N):
-        #     phi_i = self.basis_function(i)
-        #     A[i,i] = self.inner_product(phi_i)
 
         A = sparse.diags(self.L2_norm_sq(self.N+1))
         return A
@@ -517,7 +496,7 @@ def test_helmholtz():
     ue = sp.besselj(0, x)
     f = ue.diff(x, 2)+ue
     domain = (0, 10)
-    for space in (Sines, Cosines): #(NeumannChebyshev, NeumannLegendre, DirichletChebyshev, DirichletLegendre, Sines, Cosines):
+    for space in (NeumannChebyshev, NeumannLegendre, DirichletChebyshev, DirichletLegendre, Sines, Cosines):
         if space in (NeumannChebyshev, NeumannLegendre, Cosines):
             bc = ue.diff(x, 1).subs(x, domain[0]), ue.diff(
                 x, 1).subs(x, domain[1])
@@ -556,6 +535,6 @@ def test_convection_diffusion():
 
 
 if __name__ == '__main__':
-    # test_project()
-    # test_convection_diffusion()
+    test_project()
+    test_convection_diffusion()
     test_helmholtz()
