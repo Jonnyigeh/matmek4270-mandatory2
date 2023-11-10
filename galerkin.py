@@ -261,7 +261,7 @@ class Cosines(Trigonometric):
     def __init__(self, N, domain=(0, 1), bc=(0, 0)):
         # raise NotImplementedError
         Trigonometric.__init__(self, N, domain=domain)
-        self.B = Dirichlet(bc, domain, self.reference_domain)
+        self.B = Neumann(bc, domain, self.reference_domain)
 
     def basis_function(self, j, sympy=False):
         # raise NotImplementedError
@@ -275,7 +275,7 @@ class Cosines(Trigonometric):
         Scale gives prefactor, and also the proper sign (see dictionary)
         """
         # raise NotImplementedError
-        scale = ((j)*np.pi)**k * {0: 1, 1: -1}[( (k+1)//2) % 2]
+        scale = (j*np.pi)**k * {0: 1, 1: -1}[( (k+1)//2) % 2]
         if k % 2 == 0:  
             return lambda Xj: scale*np.cos((j)*np.pi*Xj)
         else:
@@ -287,9 +287,9 @@ class Cosines(Trigonometric):
         the average 
         """
         # raise NotImplementedError 
-        if N == 0:
-            return 1            # Only constant term included in integral
-        return 0.5       
+        L2n = np.ones(N) * 0.5
+        L2n[0] = 1
+        return L2n       
 
 # Create classes to hold the boundary function
 
